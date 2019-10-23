@@ -1,0 +1,35 @@
+{
+  "name": "functions",
+  "description": "Cloud Functions for Firebase",
+  "scripts": {
+    "lint": "eslint .",
+    "serve": "firebase serve --only functions",
+    "shell": "firebase functions:shell",
+    "start": "npm run shell",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
+  },
+  "engines": {
+    "node": "8"
+  },
+  "dependencies": {
+    "@google-cloud/automl": "^1.7.2",
+    "@google-cloud/storage": "^4.0.0",
+    "@google-cloud/vision": "^1.5.0",
+    "cors": "^2.8.5",
+    "firebase-admin": "^8.6.1",
+    "firebase-functions": "^3.3.0",
+    "https": "^1.0.0",
+    "image-size": "^0.8.3",
+    "mkdirp-promise": "^5.0.1",
+    "request": "^2.88.0",
+    "sharp": "^0.23.1",
+    "stream": "0.0.2"
+  },
+  "devDependencies": {
+    "eslint": "^5.12.0",
+    "eslint-plugin-promise": "^4.0.1",
+    "firebase-functions-test": "^0.1.6"
+  },
+  "private": true
+}

@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Mooie Man</title>
+    <meta name="fb:page_id" content="142161662532719" />
+    <meta name="keywords"
+        content="mooie mannen,knappe mannen,knappe man,beautiful men,beautiful man,pretty man,handsome man,sexy mannen,sexy men,plaatjes,portretten">
+    <script type="text/javascript">
+        // Man-functions
+        var endpoint = (location.hostname === "localhost")
+            ? 'http://localhost:5001/mooie-man/us-central1' // used after `firebase serve`
+            : 'https://us-central1-mooie-man.cloudfunctions.net'; // used after `firebase deploy`
+        var maxMannen = 3000;
+        fetch(new Request(endpoint + '/mooiemanCount'))
+            .then(function (blob) {
+                return blob.json()
+            }).then(function (count) {
+                mannen = parseInt(count)
+            });
+
+        function getRandom(min, max) {
+            return Math.random() * (max - min) + min
+        }
+
+        function getRandomInt(min, max) {
+            min = Math.ceil(min);
+            max = Math.floor(max);
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        function getRandomPaddedInt(min, max) {
+            return String(getRandomInt(min, max)).padStart(4, '0')
+        }
+    </script>
+    <style type="text/css">
+        iframe {
+            position: fixed;
+            top: 46px;
+            left: 20px;
+        }
+
+        #wrapper {
+            display: flex;
+            justify-content: center;
+            justify-items: center;
+            width: 100vw;
+        }
+
+        .center {
+            text-align: center;
+            margin: auto;
+            padding-top: 5em;
+        }
+
+        .fraai {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+        }
+
+        img#mooieman {
+            margin-top: 10px;
+            /* border: 10px solid lightgreen; */
+            cursor: pointer;
+        }
+
+        img#mooieman.loading {
+            cursor: progress;
+        }
+
+        img#mooieman.waiting {
+            cursor: wait;
+        }
+
+        img#mooieman.loaded {
+            cursor: pointer;
+        }
+
+        img#mooieman:hover {
+            transform: scale3d(1.03, 1.03, 1)
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+    <meta property="og:title" content="Mooie Man" />
+    <meta property="og:type" content="public_figure" />
+    <meta property="og:url" content="https://www.mooieman.com" />
+    <meta property="og:site_name" content="MooieMan.com" />
+    <meta property="fb:admins" content="100000517544087" />
+</head>
+
+<body>
+    <div class=fraai><a href="http://www.fraaievrouw.com" target="_blank">FraaieVrouw.com</a></div>
+    <div id="wrapper">
+        <div class='center'>
+            <h1>Mooie Man Admin <img id="account-avatar" width="32" height="32" /></h1>
+            <div id="firebaseui-auth-container"></div>
+            <div id="admin" class="hidden">
+                <button id="sign-out" class="hidden">Sign-out</button>
+                <input type="file" id="file" name="man" multiple="multiple" />
+                <button id="upload-file">Upload</button>
+                <p id="upload-status"></p>
+                <p id="upload-data"></p>
+            </div>
+        </div>
+        <script src="https://www.gstatic.com/firebasejs/7.2.1/firebase-app.js"></script>
+        <script src="https://www.gstatic.com/firebasejs/7.2.1/firebase-storage.js"></script>
+        <script src="https://www.gstatic.com/firebasejs/7.2.1/firebase-auth.js"></script>
+        <script src="https://www.gstatic.com/firebasejs/7.2.1/firebase-firestore.js"></script>
+        <script src="https://www.gstatic.com/firebasejs/7.2.1/firebase-analytics.js"></script>
+        <script src="https://www.gstatic.com/firebasejs/ui/4.2.0/firebase-ui-auth__nl.js"></script>
+        <link type="text/css" rel="stylesheet" href="https://cdn.firebase.com/libs/firebaseui/3.5.2/firebaseui.css" />
+        <script type="text/javascript">
+            // FirebaseUI config.
+            var uiConfig = {
+                signInSuccessUrl: '/admin',
+                signInOptions: [
+                    // Leave the lines as is for the providers you want to offer your users.
+                    firebase.auth.GoogleAuthProvider.PROVIDER_ID,
+                ],
+                // tosUrl and privacyPolicyUrl accept either url string or a callback
+                // function.
+                // Terms of service url/callback.
+                tosUrl: '/tos',
+                // Privacy policy url/callback.
+                privacyPolicyUrl: function () {
+                    window.location.assign('/privacy');
+                }
+            };
+
+            // Initialize Firebase
+            firebase.initializeApp({
+                "projectId": "mooie-man",
+                "appId": "1:712855408222:web:b7ede5d7e3152124dceecf",
+                "databaseURL": "https://mooie-man.firebaseio.com",
+                "storageBucket": "mooie-man.appspot.com",
+                "locationId": "us-central",
+                "apiKey": "AIzaSyDx-gprPvpaTekleCuFD2L_mSf_3DXPSCE",
+                "authDomain": "mooie-man.firebaseapp.com",
+                "messagingSenderId": "712855408222",
+                "measurementId": "G-HEJZ8V66N1"
+            });
+            firebase.analytics();
+            initApp = function () {
+                firebase.auth().onAuthStateChanged(function (user) {
+                    if (user) {
+                        // User is signed in.
+                        var displayName = user.displayName;
+                        var email = user.email;
+                        var emailVerified = user.emailVerified;
+                        var photoURL = user.photoURL;
+                        var uid = user.uid;
+                        var phoneNumber = user.phoneNumber;
+                        var providerData = user.providerData;
+                        user.getIdToken().then(function (accessToken) {
+                            document.getElementById('account-avatar').src = user.photoURL
+                        });
+                    } else {
+                        // User is signed out.
+                        document.getElementById('account-avatar').src = '';
+                        if(window.location.pathname!=='/signin') window.location.pathname = '/signin'
+                    }
+                }, function (error) {
+                    console.log(error);
+                });
+            };
+
+            window.addEventListener('load', function () {
+                initApp();
+            });
+            // auth
+            var provider = new firebase.auth.GoogleAuthProvider();
+            var ui = new firebaseui.auth.AuthUI(firebase.auth());
+
+            // Get a reference to the storage service, which is used to create references in your storage bucket
+            var storage = firebase.storage();
+
+            // storage ref
+            var storageRef = storage.ref();
+
+            // Create a storage reference from our storage service
+            var db = firebase.firestore();
+
+            // Create a reference under which you want to list
+            var imagesRef = db.collection('images');
+            document.addEventListener("DOMContentLoaded", function (event) {
+
+                var customElementRegistry = window.customElements;
+                switch (window.location.pathname) {
+                    case '/admin':
+                        // signout
+                        document.getElementById('admin').classList.remove('hidden')
+                        document.getElementById('sign-out').addEventListener('click', function () {
+                            firebase.auth().signOut().then(() => {
+                                window.location.pathname = '/login'
+                            });
+                        });
+                        document.getElementById('file').addEventListener('change', function (event) {
+                            let localFile = event.target.files[0];
+                            if (!localFile.name) {
+                                console.log('That\'s not a file', localFile)
+                                return;
+                            }
+                            let imgRef = storageRef.child(localFile.name);
+                            console.log('change')
+                            imgRef.put(localFile).then((e) => {
+                                console.log('localFile', typeof e, e)
+                                document.getElementById('upload-file').innerText = 'Querying model...';
+
+                                imagesRef
+                                    .where("name", "==", localFile.name)
+                                    .limit(1)
+                                    .onSnapshot(function (querySnapshot) {
+                                        querySnapshot.forEach(function (doc) {
+                                            console.log('snapshot', doc)
+                                            if (doc.exists) {
+                                                let cloudData = doc.data();
+                                                if (cloudData.predictionErr) {
+                                                    document.getElementById('upload-status').innerText = `${cloudData.predictionErr} :(`;
+                                                    document.getElementById('upload-data').innerText = JSON.stringify(JSON.parse(cloudData.annotations || "[]"), null, 2);
+                                                } else {
+                                                    document.getElementById('upload-status').innerText = JSON.stringify(cloudData, null, 2);
+                                                    document.getElementById('upload-data').innerText = JSON.stringify(JSON.parse(cloudData.annotations || "[]"), null, 2);
+                                                }
+                                            }
+                                        }, function (error) {
+                                            console.log('error', error)
+                                        });
+                                    });
+                            });
+                        })
+                        break
+                    case '/signin':
+                        ui.start('#firebaseui-auth-container', uiConfig);
+                        break;
+                    case '/login':
+                        document.getElementById('admin').classList.remove('hidden')
+                        // Initialize the FirebaseUI Widget using Firebase.
+                        // The start method will wait until the DOM is loaded.
+                        ui.start('#firebaseui-auth-container', uiConfig);
+                        break;
+                    case '/logout':
+                        document.getElementById('admin').classList.add('hidden')
+                        // Initialize the FirebaseUI Widget using Firebase.
+                        // The start method will wait until the DOM is loaded.
+                        ui.start('#firebaseui-auth-container', uiConfig);
+                        break;
+                    default:
+                        document.getElementById('admin').classList.add('hidden')
+                        break;
+                }
+            });
+        </script>
+</body>
+
+</html>

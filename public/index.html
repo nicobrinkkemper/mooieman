@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Mooie Man</title>
+  <meta name="fb:page_id" content="142161662532719" />
+  <meta name="keywords"
+    content="mooie mannen,knappe mannen,knappe man,beautiful men,beautiful man,pretty man,handsome man,sexy mannen,sexy men,plaatjes,portretten">
+  <script type="text/javascript">
+    // Man-functions
+    var endpoint = (location.hostname === "localhost")
+      ? 'http://localhost:5001/mooie-man/us-central1' // used after `firebase serve`
+      : 'https://us-central1-mooie-man.cloudfunctions.net'; // used after `firebase deploy`
+    var maxMannen = 3000;
+    fetch(new Request(endpoint + '/mooiemanCount'))
+      .then(function (blob) {
+        return blob.json()
+      }).then(function (count) {
+        mannen = parseInt(count)
+      });
+
+    function getRandom(min, max) {
+      return Math.random() * (max - min) + min
+    }
+
+    function getRandomInt(min, max) {
+      min = Math.ceil(min);
+      max = Math.floor(max);
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function getRandomPaddedInt(min, max) {
+      return String(getRandomInt(min, max)).padStart(4, '0')
+    }
+  </script>
+  <style type="text/css">
+    iframe {
+      position: fixed;
+      top: 46px;
+      left: 20px;
+    }
+
+    #wrapper {
+      display: flex;
+      justify-content: center;
+      justify-items: center;
+      width: 100vw;
+    }
+
+    .center {
+      text-align: center;
+      margin: auto;
+      padding-top: 5em;
+    }
+
+    .fraai {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+    }
+
+    img#mooieman {
+      margin-top: 10px;
+      /* border: 10px solid lightgreen; */
+      cursor: pointer;
+    }
+
+    img#mooieman.loading {
+      cursor: progress;
+    }
+
+    img#mooieman.waiting {
+      cursor: wait;
+    }
+
+    img#mooieman.loaded {
+      cursor: pointer;
+    }
+
+    img#mooieman:hover {
+      transform: scale3d(1.03, 1.03, 1)
+    }
+
+    .hidden {
+      display: none;
+    }
+  </style>
+  <meta property="og:title" content="Mooie Man" />
+  <meta property="og:type" content="public_figure" />
+  <meta property="og:url" content="https://www.mooieman.com" />
+  <meta property="og:site_name" content="MooieMan.com" />
+  <meta property="fb:admins" content="100000517544087" />
+</head>
+
+<body>
+  <div class=fraai><a href="http://www.fraaievrouw.com" target="_blank">FraaieVrouw.com</a></div>
+  <div id="wrapper">
+    <div class='center'>
+      <h1>Mooie Man</h1>
+      <noscript>
+        <a href=".">
+      </noscript>
+      <link rel="preload" class="prefetch" as="image" href="https://us-central1-mooie-man.cloudfunctions.net/mooieman/"
+        onload="
+          (function _onPrefetchMooieMan(el,type,mooieman,i){
+            console.log('link',type)
+            if(type == 'load'){
+              el.classList.add('loaded')
+              el.classList.remove('loading')
+              if(mooieman.classList.contains('waiting')) {
+                console.log('Suggesting loadstart')
+                mooieman.onload({target:mooieman,type:'loadstart'})
+              }
+            } else if(type == 'loadstart') {
+              el.href=(endpoint || el.href.substring(0,el.href.lastIndexOf('/mooieman/')))
+                + '/mooieman/'
+                + (
+                  Math.floor(Math.random() * maxMannen||3726) + 1
+                )
+              el.classList.add('loading')
+              el.classList.remove('loaded')
+            }
+          }(event.target, event.type, document.getElementById('mooieman'),0))
+      ">
+      <img style="object-fit: scale-down;" src="https://us-central1-mooie-man.cloudfunctions.net/mooieman/"
+        id="mooieman" alt="" onclick="
+        event.preventDefault();
+        // console.log('click img')
+        event.target.onload({target:event.target,type:'loadstart'})
+      " onload="
+        (function _onLoadMooieMan(el, type, prefetchers, i){
+          console.log('img',type)
+          if(type=='load'){
+            // console.log('shows',el.src,i)
+            el.classList.add('loaded')
+            el.classList.remove('loading')
+            el.classList.remove('waiting')
+            el.style.cursor = 'pointer';
+            prefetchers.forEach(function _prefetch(prefetch){
+              if(prefetch.href === event.target.src ) {
+                  prefetch.onload({target:prefetch,type:'loadstart'})
+              }
+            })
+          } else if(type == 'loadstart') {
+            el.classList.remove('loaded')
+            el.classList.remove('loading')
+            el.style.cursor = 'progress';
+            prefetchers.forEach(function _prefetch(prefetch,i,arr){
+              if (el.classList.contains('loading')) {
+                return;
+              } else if (prefetch.classList.contains('loaded')){
+                el.src = prefetch.href
+                el.classList.add('loading')
+                el.classList.remove('waiting')
+                el.classList.remove('loaded')
+                prefetch.onload({target:prefetch,type:'loadstart'})
+                console.log('new man by preload',prefetch.href,el.src)
+              } else if( i === arr.length-1 ){
+                el.classList.add('waiting')
+                el.style.cursor = 'wait';
+                if (Object.keys(prefetchers).length === 15) return;
+                var newPrefetch=prefetchers[0].parentNode.insertBefore(prefetchers[0].cloneNode(true), el)
+                newPrefetch.onload({target:newPrefetch,type:'loadstart'})
+              }
+            })
+          }
+          
+        }(event.target, event.type, Array.from(document.getElementsByClassName('prefetch')), 0))
+    " />
+      <noscript>
+        </a>
+      </noscript>
+    </div>
+    <script>
+      // inline //
+    </script>
+    <script src="./polyfills/preload-polyfill.dev.js"></script>
+    <script src="./polyfills/preload-polyfill-invoke.dev.js"></script>
+  </div>
+</body>
+
+</html>
