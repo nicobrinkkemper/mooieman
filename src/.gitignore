@@ -1,0 +1,3 @@
+node_modules/
+.secrets
+test_images
