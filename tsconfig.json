@@ -1,0 +1,11 @@
+{
+    "compilerOptions": {
+      "baseUrl": "./src",
+      "paths": {
+        "~*": ["./*"],
+      },
+      "strict": true
+    },
+    "exclude": ["node_modules",".history"],
+    "include": ["src/**/*","node_modules/firebase-admin"]
+  }

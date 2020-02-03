@@ -7,7 +7,38 @@
  * Notes for reading this code: 
  * - Every function is extensively typed. Each function respects it's definition written above it without unneccerary typecasting.
  * - Types from the config object should and will be reflected wherever you'd expect. This did require a lot of explaining to typescript. This is fine, because
- *      it means explicit output for end-users of this utility.
+ *      it means explicit type output for end-users of this utility. This is useful when configuring this utility. For example, all return types of the functions
+ *      assigned to `onFile` will be reflected.
+ *  @example
+ *  ```
+ *  const uploadBusboy = createUploadBusboy(request,{
+        onFile: {
+            test: ()=>({
+                thisisresolved:new Promise(resolve=>resolve('some value'))
+            })
+        }
+    })
+    await uploadBusboy((c)=>{
+        console.log(c)
+        // ^ hover over this variable, and see:
+        //                  v notice here, all values are wrapped with `resolved`, which unpacks Promises
+        // (parameter) c: resolved<Promise<{
+        //     thisisresolved: Promise<string>;
+        // }> & {
+        //     destination: Promise<string>;
+        // } & {
+        //     buffer: Promise<Buffer>;
+        // } & {
+        //     fieldname: string;
+        //     file: NodeJS.ReadableStream;
+        //     filename: string;
+        //     encoding: string;
+        //     mimetype: string;
+        // }>
+    });
+
+ *  ```
+ *      
  * - HOC (Higher Order Functions) are prefixed with 'create'
  * - Every function has a comment, these should show up when hovering over these types with something like vscode
  * - The only (non-native) dependency is `busboy`
@@ -20,12 +51,12 @@ type AnyFunction = (...args: any[]) => any
 type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends ((k: infer I) => void) ? I : never;
 
 /** Combined functions of array as one function */
-type combinedCreatorArr<O extends Array<AnyFunction>> = (...args: Parameters<O[number]>) => UnionToIntersection<ReturnType<O[number]>>
+type unifiedFunction<O extends AnyFunction[]> = (...args: Parameters<O[number]>) => UnionToIntersection<ReturnType<O[number]>>
 
-type createUnifiedFunction = <O extends Array<AnyFunction>>(...fns: O) => combinedCreatorArr<O>
+type _createUnifiedFunction = <O extends Array<AnyFunction>>(...fns: O) => unifiedFunction<O>
 /** Returns a function that recursively calls all functions in a array -with the same arguments- and combines results */
-const createUnifiedFunction: createUnifiedFunction = (...fns) => fns.reduce(
-    (prev: any, creator: any) => (...args: any[]) => Object.assign(prev(...args), creator(...args))
+const _createUnifiedFunction: _createUnifiedFunction = (...fns) => fns.reduce(
+    (prev, creator) => (...args) => Object.assign(prev(...args), creator(...args))
     , () => ({})
 )
 
@@ -36,9 +67,9 @@ type merged<y, x> = {
     : k extends keyof y ? y[k]
     : never
 }
-type merge = <x, y>(y: y, x: x) => merged<y, x>
+type _merge = <x, y>(y: y, x: x) => merged<y, x>
 /** Merge two objects and cast to a more readable type definition (seen when hovering over things) */
-const merge: merge = (y, x) => Object.assign(y, x) as merged<typeof y, typeof x>
+const _merge: _merge = (y, x) => Object.assign(y, x) as merged<typeof y, typeof x>
 
 /** 
  * Adds the ability to call a function without arguments which will return the history of the function.
@@ -50,6 +81,7 @@ type store<T extends AnyFunction> = {
     (): { [k: string]: ReturnType<T>[] }
 }
 
+type createStore = <T extends AnyFunction>(func: T) => store<T>
 /**
  * Upgrades a function to store and list all previous results.
  * 
@@ -57,17 +89,16 @@ type store<T extends AnyFunction> = {
  * The upgraded function will behave like the original when called with arguments, but will list a object
  * containing all previous results when called without arguments. Each result
  * will be keyed by their first argument, which must always be a string. A key can have multiple
- * results, which is why all results are createStored in a array.
+ * results, which is why all results are stored in a array.
  * ```ts
  * const create = (fieldname,value)=>({[fieldname]:value})
- * const myStore = createStore(create)
+ * const myStore = _createStore(create)
  * myStore('A','some')
  * myStore('B','values')
  * console.log(myStore('A','thing')) // {A:'thing'}
  * console.log(myStore()) // { A: [{A:'some'},{A:'thing'}], B: [{B:'values'}] }
  * ```
  */
-type createStore = <T extends AnyFunction>(func: T) => store<T>
 const _createStore: createStore = (func, obj = {} as any) => (...args: any[]) => {
     if (!args.length || !obj) return obj
     const r = func(...args);
@@ -81,6 +112,19 @@ const _createStore: createStore = (func, obj = {} as any) => (...args: any[]) =>
     return r;
 }
 
+
+/** Wraps each value of a object with store, see @see store */
+type wrappedFunctionObject<T extends AnyFunction, O extends { [k: string]: any }> = { [k in keyof O]: T extends (fn: O[k]) => infer U ? U : never }
+
+type _wrapFunctionObject = <T extends AnyFunction, O extends { [k: string]: any }>(func: T, obj: O) => wrappedFunctionObject<T, O>
+const _wrapFunctionObject: _wrapFunctionObject = (func, obj) =>
+    Object.entries(obj)
+        .reduce(
+            (prev, [key, value]) => Object.assign(prev, { [key]: func(value) }),
+            <typeof obj>{}
+        )
+
+
 /** Wraps each value of a object with store, see @see store */
 type wrappedStore<O extends { [k: string]: any }> = { [k in keyof O]: store<O[k]> }
 
@@ -89,13 +133,8 @@ type wrappedStore<O extends { [k: string]: any }> = { [k in keyof O]: store<O[k]
  * todo: make the store function generic somehow, this is hard
  * because our store function has two signatures (with and without parameters)
  */
-type wrapStore = <T extends AnyFunction, O extends { [k: string]: any }>(func: T, obj: O) => wrappedStore<O>
-const _wrapStore: wrapStore = (func, obj) =>
-    Object.entries(obj)
-        .reduce(
-            (prev, [key, value]) => Object.assign(prev, { [key]: func(value) }),
-            <typeof obj>{}
-        )
+type _wrapStore = <O extends { [k: string]: any }>(obj: O) => wrappedStore<O>
+const _wrapStore: _wrapStore = (obj) => _wrapFunctionObject(_createStore, obj)
 
 /** Generic function for files */
 type AnyFileFunction<RETURN> = (fieldname: string, file: NodeJS.ReadableStream, filename: string, encoding: string, mimetype: string) => RETURN
@@ -120,14 +159,15 @@ type fileWrites = AnyFileFunction<{ destination: Promise<string> }>
  * Turns file and filename argument in to a writestream in a folder
  * NOTE: this one has a depenceny on utils, which is a extra function call
  */
-type fileWritesCreate = ({ tmpdir, tmpname }: merged<utils, any>) => fileWrites
-const _fileWritesCreate: fileWritesCreate = ({ tmpdir, tmpname }) => {
-    const fs = require('fs');
-    const path = require('path');
+type fileWritesCreate = () => fileWrites
+const _fileWritesCreate: fileWritesCreate = () => {
+    const createWriteStream = require('fs').createWriteStream;
+    const join = require('path').join;
+    const tmpdir = require('os').tmpdir
     return (...args) => ({
         destination: new Promise((resolve, reject) => {
-            const destination = path.join(tmpdir(...args), tmpname(...args));
-            const writeStream = fs.createWriteStream(destination);
+            const destination = join(tmpdir(args[0]), args[3]);
+            const writeStream = createWriteStream(destination);
             args[1].pipe(writeStream);
             args[1].on('end', () => { writeStream.end(); });
             writeStream.on('finish', () => resolve(destination));
@@ -187,49 +227,24 @@ type onField = {
 /** Object.values equivalent for typescript */
 type valuesOf<T extends object> = T extends { [k in keyof T]: infer U } ? U[] : never
 
-/** default temporary directory used for fileWrites */
-type tmpdir = AnyFileFunction<string>;
-
-/** default temporary filename used for fileWrites */
-type tmpname = AnyFileFunction<string>;
-
-
-/** The utilities for fileWriteCreate */
-type utils = {
-    tmpdir: tmpdir
-    tmpname: tmpname,
-}
-
 /** the default configuration of createUploadBusboy */
 export type ConfigDefaults = {
-    createStore: createStore
-    wrapStore: wrapStore
-    newBusboy: newBusboy
-    utils: utils
     onFile: onFile
     onField: onField
 };
 
 /** the configuration given by a programmer */
 export type Config = {
-    createStore?: createStore
-    wrapStore?: wrapStore
-    newBusboy?: newBusboy
-    utils?: { [k: string]: AnyFunction }
-    onFile?: { [k: string]: AnyFileFunction<object> }
-    onField?: { [k: string]: AnyFieldFunction<object> }
+    onFile?: { [k: string]: AnyFileFunction<any> }
+    onField?: { [k: string]: AnyFieldFunction<any> }
 }
 
 
 
 /** A accurate definition of merged config, reflects any possible configuration */
 export type mergedConfig<C extends Config> = {
-    createStore: C['createStore'] extends createStore ? C['createStore'] : createStore
-    wrapStore: C['wrapStore'] extends wrapStore ? C['wrapStore'] : wrapStore
-    newBusboy: C['newBusboy'] extends newBusboy ? C['newBusboy'] : newBusboy
-    utils: merged<utils, (C["utils"] extends functionObject ? C["utils"] : {})>
-    onFile: merged<onFile, (C["onFile"] extends functionObject ? C["onFile"] : {})>
-    onField: merged<onField, (C["onField"] extends functionObject ? C["onField"] : {})>
+    onFile: merged<onFile, (C["onFile"] extends { [k: string]: AnyFileFunction<any> } ? C["onFile"] : Config)>
+    onField: merged<onField, (C["onField"] extends { [k: string]: AnyFieldFunction<any> } ? C["onField"] : Config)>
 }
 
 type functionObject = { [k: string]: AnyFunction }
@@ -244,59 +259,47 @@ const fnsOnlyErr = (name: string) => new Error(`createUploadBusboy config proper
 
 /** A inbetween state of merging config type definitions, either this or that */
 type simpleMergedConfig<C extends Config> = {
-    createStore: C['createStore'] | createStore
-    wrapStore: C['wrapStore'] | wrapStore
-    newBusboy: C['newBusboy'] | newBusboy
-    utils: C['utils'] | utils
     onFile: C['onFile'] | onFile
     onField: C['onField'] | onField
 }
 
-type mergeConfig = <C extends Config>(config?: C) => mergedConfig<C>
+type _mergeConfig = <C extends Config>(config?: C) => mergedConfig<C>
 /** Assigns all the default functions to the config object */
-const mergeConfig: mergeConfig = (config = {} as any) => {
-    if (!isFunctionObject(config.utils)) throw (fnsOnlyErr('utils'))
+const _mergeConfig: _mergeConfig = (config = {} as any) => {
     if (!isFunctionObject(config.onFile)) throw (fnsOnlyErr('onFile'))
     if (!isFunctionObject(config.onField)) throw (fnsOnlyErr('onField'))
-    const utils = merge(
-        <utils>{
-            tmpname: (_, __, filename) => filename,
-            tmpdir: require('os').tmpdir
-        },
-        config.utils || {}
-    );
     return {
-        onField: merge(
+        onField: _merge(
             <onField>{
                 fields: _fields
             },
             config.onField || {}
         ),
-        onFile: merge(
+        onFile: _merge(
             <onFile>{
-                fileWrites: _fileWritesCreate(utils),
+                fileWrites: _fileWritesCreate(),
                 fileBuffers: _fileBuffers,
                 files: _files
             },
             config.onFile || {}
-        ),
-        utils,
-        newBusboy: typeof config.newBusboy === 'function' ? config.newBusboy : _newBusboy,
-        wrapStore: typeof config.wrapStore === 'function' ? config.wrapStore : _wrapStore,
-        createStore: typeof config.createStore === 'function' ? config.createStore : _createStore
+        )
     } as simpleMergedConfig<typeof config> as mergedConfig<typeof config>
 }
 
 
 /** infers the return type of a Promise */
-type UnpackPromise<T> = T extends Promise<infer U> ? U : T;
+type Unpacked<T> =
+    T extends (infer U)[] ? U :
+    T extends (...args: any[]) => infer U ? U :
+    T extends Promise<infer U> ? U :
+    T;
 
-type newBusboy = (busboyConfig: busboy.BusboyConfig) => busboy.Busboy;
+type _newBusboy = (busboyConfig: busboy.BusboyConfig) => busboy.Busboy;
 /** creates a new instance of busboy class */
-const _newBusboy: newBusboy = busboyConfig => new (require('busboy'))(busboyConfig)
+const _newBusboy: _newBusboy = busboyConfig => new (require('busboy'))(busboyConfig)
 
 /** infers the return type of Promises attached to a object */
-type resolved<T extends any> = { [s in keyof T]: UnpackPromise<T[s]>; }
+type resolved<T extends any> = { [s in keyof T]: Unpacked<T[s]>; }
 
 /**
  * Turns all promise-values of a object in to a single promise returning the object with values resolved
@@ -310,76 +313,59 @@ const resolver: resolver = async obj => {
 }
 
 /** The results of the start function without any config changes */
-export type defaultResults = resolved<ReturnType<onFileMergedConf<{}>>[]>
+export type defaultResults = resolved<ReturnType<mergedConf<functionObject>>[]>
 
-/** The combination of default onFile configuration and the onFile configuration given by a end-user, if any */
-type onFileMergedConf<ONFILE extends { [k: string]: AnyFileFunction<any> }> = combinedCreatorArr<(AnyFileFunction<{
-    destination: Promise<string>;
-    buffer: Promise<Buffer>;
-    fieldname: string;
-    file: NodeJS.ReadableStream;
-    filename: string;
-    encoding: string;
-    mimetype: string;
-}>)[]>
-/** The combination of default onFile configuration and the onFile configuration given by a end-user, if any */
-type onFieldMergedConf<ONFIELD extends { [k: string]: AnyFieldFunction<any> }> = combinedCreatorArr<AnyFieldFunction<{
-    fieldname: string;
-    val: any;
-    fieldnameTruncated: boolean;
-    valTruncated: boolean;
-    encoding: string;
-    mimetype: string;
-}>[]>
+/** The combination of default configuration and the configuration given by a end-user -if any- as a array */
+type mergedConf<ONFILE extends functionObject> = unifiedFunction<valuesOf<ONFILE>>
 
 /** The api facing a end-user of createUploadBusboy, this the returnType of createUploadBusboy */
-type api<C extends Config, MC extends mergedConfig<any>> = {
+type api<C extends Config, MC extends mergedConfig<C>, ONFILEVALUES extends valuesOf<MC['onFile']>> = {
     busboy: busboy.Busboy
-    onFile: store<onFileMergedConf<MC['onFile']>>
-    onField: store<onFieldMergedConf<MC['onField']>>, 
-    utils: MC['utils']
-    start: start<MC>
-} & wrappedStore<MC['onField']> & wrappedStore<MC['onFile']> & start<MC>
+    onFile: ONFILEVALUES extends AnyFunction[] ? store<unifiedFunction<ONFILEVALUES>> : never
+    start: start<ONFILEVALUES extends AnyFunction[] ? unifiedFunction<ONFILEVALUES> : never>
+} & wrappedStore<MC['onField']> & wrappedStore<MC['onFile']> & start<ONFILEVALUES extends AnyFunction[] ? unifiedFunction<ONFILEVALUES> : never>
 
 /** The start function with and without callback */
-type start<MC extends mergedConfig<any>> = {
-    <CB extends ((done: resolved<ReturnType<onFileMergedConf<MC['onFile']>>>) => any)>(cb: CB): Promise<resolved<ReturnType<CB>[]>>
-    (): Promise<resolved<ReturnType<onFileMergedConf<MC['onFile']>>>[]>
+type start<ONFILEFN extends any> = {
+    <CB extends ((done: resolved<ONFILEFN>) => any)>(cb: CB): Promise<resolved<ReturnType<CB>[]>>
+    (): Promise<resolved<ONFILEFN>[]>
 }
 
-type createApi = <R extends { rawBody: any, headers: object }, C extends Config, MC extends mergedConfig<C>>(request: R, config: MC) => api<C, MC>
-/** Generete the api facing a end-user of this utility. This is the interface of the program.
- *  The api/interface is actually just a function, but also has uttility functions attached to it; think "callable object" */
-export const createApi: createApi = (request, config) => {
-    const { utils, newBusboy, onField, onFile, createStore, wrapStore } = config
-    /** some busboy logic, the newBusboy function may be from config */
-    const busboy = newBusboy({ headers: request.headers })
-    /** onFile is extendable through config */
-    const onFileSubStores = wrapStore(
-        createStore,
-        onFile
-    )
-    /** onFile is a function that stores the combination of all substores */
-    const handleOnFile = createStore(
-        createUnifiedFunction(
-            /**  
-             * Don't use substores ReturnTypes because the two function signatures of store will obvuscate the function signature.
-             * However, we still want to give it as a parameter, as this will populate our substores
-            */
-            ...Object.values(onFileSubStores as unknown as onFile)
-        )
-    )
+type _createApi = <R extends { rawBody: any, headers: object }, C extends Config>(request: R, config?: C) => api<C,mergedConfig<C>,valuesOf<mergedConfig<C>['onFile']>>
 
-    /** fields have the same logic as files. Eventhough there is just one default function, additional ones could be configured */
-    const onFieldSubStores = wrapStore(
-        createStore,
-        onField
-    )
-    const handleOnField = createStore(
-        createUnifiedFunction(
-            ...Object.values(onFieldSubStores as unknown as onField)
+/** Creates the api facing the end-user of this utility.
+ *  The api/interface is actually just a function, but also has utility-functions attached to it; think "callable object"
+ */
+const _createApi: _createApi = (request, config) => {
+    /** mc is the combination of default configuration and the configuration of a end-user of this utility*/
+    const mc = _mergeConfig(config)
+    /** Basically does `new Busboy`, so unless you have a good reason the default should be desired.  */
+    /** The busboy instance */
+    const busboy = _newBusboy({ headers: request.headers })
+    /** All the onFile functions wrapped with store (default: files,fileWrites,fileBuffers) */
+    const onFileSubStores = _wrapStore(mc.onFile)
+    /** All the onField functions wrapped with store (default: fields) */
+    const onFieldSubStores = _wrapStore(mc.onField)
+    /** `handleOnFile` is a function that calls, merges and stores results of all file functions.
+     * When `handleOnFile` is called with arguments: all substores will be called with these same arguments and the results will be merged to one object.
+     * When `handleOnFile` is called without arguments: all the previous (merged) results will be returned as a array.
+    */
+    const handleOnFile = _createStore(
+        _createUnifiedFunction(
+            /**  
+             * Calling a substore without arguments can't be done from within this unified function,
+             * and it wouldn't make sense to do so. That is why onFileSubstores is typecasted back to `mc['onFile']`
+            */
+            ...Object.values(onFileSubStores as typeof mc['onFile'])
         )
     )
+    /** `handleOnField` is a function that calls, merges and stores results of all field functions. */
+    const handleOnField = _createStore(
+        _createUnifiedFunction(
+            ...Object.values(onFieldSubStores as typeof mc['onField'])
+        )
+    )
+    /** `start` is the function that puts everything in motion. */
     const start = async (cb?: AnyFunction) => {
         const filePromises: any[] = []
         const handler = (typeof cb === 'function')
@@ -404,23 +390,19 @@ export const createApi: createApi = (request, config) => {
         ...onFieldSubStores,
         busboy,
         onFile: handleOnFile,
-        utils,
         onField: handleOnField,
         start
     })
 }
 
 /**
- * This is the main/default function and returns
- * the api/interface upon receiving the request object and a optional configuration object.
+ * Configures a function that can be used to process incomming uploaded files
+ * 
+ * @note This is a alias for `_createApi` @see _createApi
+ * 
+ * @param request   the request object containing atleast rawBody (any) and headers (object)
+ * @param config    a optional configuration object. @see Config
  */
-export type createUploadBusboy = <
-    R extends { rawBody: any, headers: object },
-    C extends Config
-    >(
-    request: R,
-    config?: C,
-) => api<C, mergedConfig<C>>
-export const createUploadBusboy: createUploadBusboy = (request, config) => createApi(request, mergeConfig(config))
+export const createUploadBusboy: _createApi = _createApi
 
 export default createUploadBusboy

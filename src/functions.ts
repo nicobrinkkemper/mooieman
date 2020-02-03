@@ -10,8 +10,8 @@ import { FIREBASE_CONFIG, dev } from '~contants';
 import { createUploadBusboy } from '~tools/uploadBusboy';
 import { Request } from 'express-serve-static-core';
 import { logAscii } from '~tools/ascii';
-import { create } from '~models/photos';
-
+import { create, analysePhoto } from '~models/photos';
+import { flow } from 'fp-ts/lib/function'
 // import mime from 'mime-types'
 var app = express()
 admin.initializeApp(FIREBASE_CONFIG)
@@ -78,17 +78,16 @@ app.get('/:type(mooieman|fraaievrouw)/:id(\\d+)?', async (
 
 app.post('/upload', async (request, response) => {
     try {
-      
         const uploadBusboy = createUploadBusboy(request,{
             onFile: {
-                fileWrites: ()=>({
-                    dddddddddddddd:'jim'
-                })
+                jimfn: ()=>({jim:'jim'})
             }
         })
-        await uploadBusboy((c)=>{
-            console.log(c)
+        const r = await uploadBusboy((upload)=>{
+            create(upload.jim)
+            return upload
         });
+        console.log(r)
         console.log('done')
         response.json(Object.values(uploadBusboy.files()).flat().map(({file,...other})=>other))
     } catch (e) {

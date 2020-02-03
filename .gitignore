@@ -1,5 +1,8 @@
 # vscode history plugin
 .history
+functions/.secret
+.secret
+**/.secret
 # test images
 test-images
 

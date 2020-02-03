@@ -5,5 +5,21 @@ service cloud.firestore {
       allow read: if true;
       allow write: if request.auth.uid != null;
     }
+    match /stats/{collection} {
+      allow read: if true;
+      allow write: if request.auth.uid != null;
+    }
+    match /mooieman/{entry} {
+      allow read: if true;
+      allow write: if request.auth.uid != null;
+    }
+    match /fraaievrouw/{entry} {
+      allow read: if true;
+      allow write: if request.auth.uid != null;
+    }
+    match /none/{entry} {
+      allow read: if true;
+      allow write: if request.auth.uid != null;
+    }
   }
 }

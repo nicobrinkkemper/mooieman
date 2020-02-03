@@ -1,16 +1,30 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    match /{allPaths=**} {
-      allow read, write;
-    }
-    match /{imageId} {
+    
+    match /mooieman/{imageId} {
        allow read;
-       allow write: if request.resource.size < 5 * 1024 * 1024
-                    && request.resource.contentType.matches('image/.*')
+       allow write: if request.resource.contentType.matches('image/.*')
                     && request.resource.contentType == resource.contentType
-                    && imageId.size() < 32
                     && request.auth.uid != null
-     }
+    }
+    match /mooieman/original/{imageId} {
+       allow read;
+       allow write: if request.resource.contentType.matches('image/.*')
+                    && request.resource.contentType == resource.contentType
+                    && request.auth.uid != null
+    }
+     match /fraaievrouw/{imageId} {
+       allow read;
+       allow write: if request.resource.contentType.matches('image/.*')
+                    && request.resource.contentType == resource.contentType
+                    && request.auth.uid != null
+    }
+    match /fraaievrouw/original/{imageId} {
+       allow read;
+       allow write: if request.resource.contentType.matches('image/.*')
+                    && request.resource.contentType == resource.contentType
+                    && request.auth.uid != null
+    }
   }
 }

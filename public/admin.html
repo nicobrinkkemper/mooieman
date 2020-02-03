@@ -6,33 +6,7 @@
     <meta name="fb:page_id" content="142161662532719" />
     <meta name="keywords"
         content="mooie mannen,knappe mannen,knappe man,beautiful men,beautiful man,pretty man,handsome man,sexy mannen,sexy men,plaatjes,portretten">
-    <script type="text/javascript">
-        // Man-functions
-        var endpoint = (location.hostname === "localhost")
-            ? 'http://localhost:5001/mooie-man/us-central1' // used after `firebase serve`
-            : 'https://us-central1-mooie-man.cloudfunctions.net'; // used after `firebase deploy`
-        var maxMannen = 3000;
-        fetch(new Request(endpoint + '/mooiemanCount'))
-            .then(function (blob) {
-                return blob.json()
-            }).then(function (count) {
-                mannen = parseInt(count)
-            });
 
-        function getRandom(min, max) {
-            return Math.random() * (max - min) + min
-        }
-
-        function getRandomInt(min, max) {
-            min = Math.ceil(min);
-            max = Math.floor(max);
-            return Math.floor(Math.random() * (max - min + 1)) + min;
-        }
-
-        function getRandomPaddedInt(min, max) {
-            return String(getRandomInt(min, max)).padStart(4, '0')
-        }
-    </script>
     <style type="text/css">
         iframe {
             position: fixed;
@@ -84,6 +58,94 @@
         .hidden {
             display: none;
         }
+
+        .grid-table {
+            display: grid;
+            margin: 0 auto;
+            box-shadow: 0 5px 15px 0 rgba(0, 0, 0, 0.2);
+            align-items: top;
+            background: rgba(250, 250, 250, 0.9);
+            border-radius: 0.5rem;
+        }
+
+        .grid-table-row {
+            display: grid;
+            grid-template-columns: repeat(2, 2fr) repeat(2, 1fr);
+        }
+
+        .grid-table-row:not(:last-child) {
+            border-bottom: 1px solid #ddd;
+        }
+
+        .grid-table-row:first-child {
+            border-radius: 0.5rem 0.5rem 0 0;
+            background: rgba(204, 204, 204, 0.5);
+            font-weight: bold;
+            text-shadow: 0 2px 1px #fff;
+        }
+
+        .grid-table-cell {
+            padding: 1rem;
+        }
+
+        .grid-table-cell:not(:last-child) {
+            border-right: 1px solid #ddd;
+        }
+
+        @media (max-width: 800px) {
+            .grid-table {
+                background: transparent;
+                grid-row-gap: 2rem;
+                box-shadow: none;
+            }
+
+            .grid-table-row {
+                grid-template-columns: 3fr 1fr 3fr;
+                background: rgba(250, 250, 250, 0.9);
+                box-shadow: 0 5px 15px 0 rgba(0, 0, 0, 0.2);
+                border-radius: 0.5rem;
+            }
+
+            .grid-table-row:first-child {
+                display: none;
+            }
+
+            .grid-table-cell {
+                padding: 0 0 1rem 0;
+                text-align: center;
+            }
+
+            .grid-table-cell:before {
+                content: attr(data-title);
+                font-weight: bold;
+                display: block;
+                background: rgba(221, 221, 221, 0.8);
+                padding: 0.75rem;
+                margin-bottom: 0.75rem;
+                font-size: 1rem;
+            }
+
+            .grid-table-cell:first-child {
+                grid-column-start: 1;
+                grid-column-end: 5;
+                border-bottom: 1px solid #ddd;
+            }
+
+            .grid-table-cell:first-child:before {
+                border-radius: 0.5rem 0.5rem 0 0;
+            }
+        }
+
+        @media (max-width: 400px) {
+            .grid-table-row {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .grid-table-cell:last-child {
+                grid-column-start: 1;
+                grid-column-end: 5;
+            }
+        }
     </style>
     <meta property="og:title" content="Mooie Man" />
     <meta property="og:type" content="public_figure" />
@@ -97,24 +159,271 @@
     <div id="wrapper">
         <div class='center'>
             <h1>Mooie Man Admin <img id="account-avatar" width="32" height="32" /></h1>
-            <div id="firebaseui-auth-container"></div>
+            <div id="firebaseui-auth-uploadTable"></div>
             <div id="admin" class="hidden">
                 <button id="sign-out" class="hidden">Sign-out</button>
-                <input type="file" id="file" name="man" multiple="multiple" />
-                <button id="upload-file">Upload</button>
+                <form action="/upload" id="upload-form" method="post" enctype="multipart/form-data">
+                    <input type="file" id="file" name="uploads" multiple="multiple" />
+                    <button id="upload-file">Upload</button>
+                </form>
                 <p id="upload-status"></p>
                 <p id="upload-data"></p>
+                <h2>Uploads</h2>
+                <div class="grid-table" id="upload-table">
+                    <div class="grid-table-row" id="upload-head">
+                        <div class="grid-table-cell">Type</div>
+                        <div class="grid-table-cell">Photo</div>
+                        <div class="grid-table-cell">Options</div>
+                    </div>
+                    <div class="grid-table-row" id="upload-pagination">
+                        <a href="?uploads=1">1</a>
+                    </div>
+                </div>
             </div>
         </div>
+        <template id="upload-row-template">
+            <div class="grid-table-row upload-row">
+                <div class="grid-table-cell type" data-title="Type"></div>
+                <div class="grid-table-cell photo" data-title="Photo"></div>
+                <div class="grid-table-cell options" data-title="Options">
+                    <a href="/view" target="_blank" class="view">Download COLOR Photo Here</a>
+                </div>
+            </div>
+        </template>
         <script src="https://www.gstatic.com/firebasejs/7.2.1/firebase-app.js"></script>
         <script src="https://www.gstatic.com/firebasejs/7.2.1/firebase-storage.js"></script>
         <script src="https://www.gstatic.com/firebasejs/7.2.1/firebase-auth.js"></script>
         <script src="https://www.gstatic.com/firebasejs/7.2.1/firebase-firestore.js"></script>
         <script src="https://www.gstatic.com/firebasejs/7.2.1/firebase-analytics.js"></script>
         <script src="https://www.gstatic.com/firebasejs/ui/4.2.0/firebase-ui-auth__nl.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/screw-filereader@1.4.3/index.min.js"></script>
         <link type="text/css" rel="stylesheet" href="https://cdn.firebase.com/libs/firebaseui/3.5.2/firebaseui.css" />
+        <script type="text/javascript" src="./polyfills/custom-event.js"></script>
+        <script type="text/javascript" src="./polyfills/image-link-polyfill.js"></script>
         <script type="text/javascript">
+
+            var getRandom = function getRandom(min, max) {
+                return Math.random() * (max - min) + min
+            }
+
+            var getRandomInt = function getRandomInt(min, max) {
+                min = Math.ceil(min);
+                max = Math.floor(max);
+                return Math.floor(Math.random() * (max - min + 1)) + min;
+            }
+
+            var getRandomPaddedInt = function getRandomPaddedInt(min, max) {
+                return String(getRandomInt(min, max)).padStart(4, '0')
+            }
+            var FileListItem = function FileListItem(a) {
+                a = [].slice.call(Array.isArray(a) ? a : arguments)
+                for (var c, b = c = a.length, d = !0; b-- && d;) d = a[b] instanceof File
+                if (!d) throw new TypeError("expected argument to FileList is File or array of File objects")
+                for (b = (new ClipboardEvent("")).clipboardData || new DataTransfer; c--;) b.items.add(a[c])
+                return b.files
+            }
+            var uploadManual = function uploadManual(event) {
+                event.preventDefault();
+                const target = event.target;
+                const type = event.type;
+                const tagName = event.target.tagName
+                const uploadTable = document.getElementById('upload-table');
+                const uploadHead = document.getElementById('upload-head')
+                const uploadPagination = document.getElementById('upload-pagination')
+                const uploadRowTemplate = document.getElementById('upload-row-template')
+                console.log('uploadManual', tagName, type, target, tagName === 'FORM' && type === 'submit')
+                if (tagName === 'FORM' && type === 'submit') {
+                    if(dev) console.log('fetching', target.action)
+                    fetch(target.action, {
+                        method: target.method,
+                        body: new FormData(target)
+                    }).then(function (blob) {
+                        return blob.json()
+                    }).then(response => {
+                        console.log({ response })
+                    })
+                } else if (tagName === 'INPUT' && type === 'change') {
+                    for (let fileIndex in this.files) {
+                        if (!fileIndex) return;
+                        const file = this.files[fileIndex];
+                        if (!file) return;
+                        if (typeof file.image !== 'function') {
+                            console.log('skip')
+                            return;
+                        }
+                        file.image().then(img => {
+                            const canvas = document.createElement('canvas')
+                            canvas.classList.add('upload')
+                            const ctx = canvas.getContext('2d')
+                            const tmpl = uploadRowTemplate.content.cloneNode(true);
+                            const maxWidth = 600
+                            const maxHeight = 600
+                            const ratio = Math.min(maxWidth / img.width, maxHeight / img.height)
+                            const width = img.width * ratio + .5 | 0
+                            const height = img.height * ratio + .5 | 0
+
+                            canvas.width = width / 4
+                            canvas.height = height / 4
+
+                            ctx.drawImage(img, 0, 0, width / 4, height / 4)
+                            tmpl.querySelector('.type').innerText = 'Prepared for upload'
+                            tmpl.querySelector('.photo').appendChild(canvas)
+                            tmpl.querySelector('.options').innerText = 'click upload'
+                            tmpl.firstElementChild.id='temp-'+file.name.replace(/\s/g, '');  // set id
+                            uploadTable.insertBefore(tmpl, uploadHead.nextElementSibling)
+                            event.target.files[fileIndex] = canvas.toDataURL(file.type);
+                        })
+                    }
+                }
+            }
+
+            var upload = function upload(event) {
+                for (let fileIndex in event.target.files) {
+                    if (!fileIndex) return;
+                    const file = event.target.files[fileIndex];
+                    console.log('uploads', file)
+                    let imgRef = storageRef.child(file.name);
+                    imgRef.put(file).then((e) => {
+                        console.log('localFile', typeof e, e)
+                        document.getElementById('upload-file').innerText = 'Generating thumbnails...';
+
+                        imagesRef
+                            .where("name", "==", file.name)
+                            .limit(1)
+                            .onSnapshot(function (querySnapshot) {
+                                querySnapshot.forEach(function (doc) {
+                                    console.log('snapshot', doc)
+                                    if (doc.exists) {
+                                        let cloudData = doc.data();
+                                        console.log('data', cloudData)
+                                    }
+                                }, function (error) {
+                                    console.log('error', error)
+                                });
+                            });
+                    });
+                }
+            }
+
+            var insertUploadRows = function insertUploadRow(querySnapshot) {
+                if ('content' in document.createElement('template')) {
+                    const uploadTable = document.getElementById('upload-table');
+                    const uploadHead = document.getElementById('upload-head')
+                    const uploadPagination = document.getElementById('upload-pagination')
+                    const uploadRowTemplate = document.getElementById('upload-row-template')
+                    let tmpl, img, temp, data, src;
+                    querySnapshot.docChanges().forEach(change => {
+                        if(dev) console.log('uploadrow change',change.type, change.doc.id)
+                        if (change.type === 'added') {
+                            console.log('New: ', change.doc.data());
+                            tmpl = uploadRowTemplate.content.cloneNode(true);
+                            data = change.doc.data()
+                            console.log(data.originalFileName)
+                            if(temp = document.getElementById('temp-'+data.originalFileName.replace(/\s/g, ''))) {
+                                if(dev) console.log('deleting temp')
+                                // temp.remove()
+                                temp.querySelector('.options').innerText = `
+data: ${data.model.type}
+confidence: ${data.model[data.model.type]}`
+                                temp.querySelector('.type').innerText = data.type
+                            };
+                            img = document.createElement('img')
+                            img.src = `https://firebasestorage.googleapis.com/v0/b/mooie-man.appspot.com/o/${(encodeURI(data.filePath.replace('/','/thumb_'))).replace("/", "%2F")}?alt=media`
+                            tmpl.querySelector('.photo').appendChild(img);
+                            tmpl.querySelector('.type').innerText = data.model.type;
+                            tmpl.querySelector('.view').href = `https://firebasestorage.googleapis.com/v0/b/mooie-man.appspot.com/o/${(encodeURI(data.originalFilePath)).replace("/", "%2F")}?alt=media`;
+                            tmpl.firstElementChild.id = data.modelId
+                            uploadTable.insertBefore(tmpl, uploadPagination);
+
+                        }
+                        else if (change.type === 'modified') {
+                            data = change.doc.data()
+                            console.log('Modified: ', data);
+                            tmpl = document.getElementById(data.model.md5)
+                            if(temp = document.getElementById('temp-'+data.originalFileName.replace(/\s/g, ''))) {
+                                if(dev) console.log('deleting temp')
+                                temp.querySelector('.options').innerText = `
+data: ${data.model.type}
+confidence: ${data.model[data.model.type]}`
+                                temp.querySelector('.type').innerText = data.type
+                            };
+                            src = `https://firebasestorage.googleapis.com/v0/b/mooie-man.appspot.com/o/${data.filePath}`
+                            tmpl.querySelector('.photo').innerHtml = `<img src="${src}" />`;
+                            tmpl.querySelector('.type').innerText = data.model.type;
+                            tmpl.querySelector('.view').href = `https://firebasestorage.googleapis.com/v0/b/mooie-man.appspot.com/o/${(encodeURI(data.originalFilePath)).replace("/", "%2F")}?alt=media`;
+                        }
+                        else if (change.type === 'removed') {
+                            tmpl = document.getElementById(change.doc.data().image)
+                            data = change.doc.data()
+                            console.log('Removed: ', data);
+                            if(temp = document.getElementById('temp-'+data.originalFileName.replace(/\s/g, '')))  {
+                                temp.querySelector('.options').innerText = `removed`
+                                temp.querySelector('.type').innerText = data.type
+                            };
+                            tmpl.remove()
+                        } else {
+                            console.warn('Unknown type',change.type)
+                        }
+                    });
+                } else {
+                    alert('Your browser does not support templates');
+                }
+            }
+
+            var handleAdmin = function handleAdmin() {
+                document.getElementById('admin').classList.remove('hidden')
+                document.getElementById('sign-out').addEventListener('click', function () {
+                    firebase.auth().signOut().then(() => {
+                        window.location.pathname = '/login'
+                    });
+                });
+                document.getElementById('upload-form').addEventListener('submit', uploadManual);
+                document.getElementById('file').addEventListener('change', (!dev) ? upload : uploadManual)
+                db.collection('images').onSnapshot(insertUploadRows);
+            }
+
+            var adminApp = function adminApp(event) {
+                var customElementRegistry = window.customElements;
+                switch (window.location.pathname) {
+                    case '/admin':
+                        // signout
+                        handleAdmin()
+                        break
+                    case '/signin':
+                        ui.start('#firebaseui-auth-uploadTable', uiConfig);
+                        break;
+                    case '/login':
+                        document.getElementById('admin').classList.remove('hidden')
+                        // Initialize the FirebaseUI Widget using Firebase.
+                        // The start method will wait until the DOM is loaded.
+                        ui.start('#firebaseui-auth-uploadTable', uiConfig);
+                        break;
+                    case '/logout':
+                        document.getElementById('admin').classList.add('hidden')
+                        // Initialize the FirebaseUI Widget using Firebase.
+                        // The start method will wait until the DOM is loaded.
+                        ui.start('#firebaseui-auth-uploadTable', uiConfig);
+                        break;
+                    default:
+                        document.getElementById('admin').classList.add('hidden')
+                        break;
+                }
+            }
+
+            // runtime
+            document.addEventListener("DOMContentLoaded", adminApp);
             // FirebaseUI config.
+            var loadImagePolyfil = imageLinkPolyfill()
+            var dev = (location.hostname === "localhost")
+            var max = !dev ? 300 : 3;
+
+            // request the amount of images so we can include all
+            if (dev) fetch(new Request('/count/mooieman'))
+                .then(function (blob) {
+                    return blob.json()
+                }).then(function (count) {
+                    max = parseInt(count)
+                });
             var uiConfig = {
                 signInSuccessUrl: '/admin',
                 signInOptions: [
@@ -161,7 +470,7 @@
                     } else {
                         // User is signed out.
                         document.getElementById('account-avatar').src = '';
-                        if(window.location.pathname!=='/signin') window.location.pathname = '/signin'
+                        if (window.location.pathname !== '/signin') window.location.pathname = '/signin'
                     }
                 }, function (error) {
                     console.log(error);
@@ -174,85 +483,10 @@
             // auth
             var provider = new firebase.auth.GoogleAuthProvider();
             var ui = new firebaseui.auth.AuthUI(firebase.auth());
-
-            // Get a reference to the storage service, which is used to create references in your storage bucket
             var storage = firebase.storage();
-
-            // storage ref
             var storageRef = storage.ref();
-
-            // Create a storage reference from our storage service
             var db = firebase.firestore();
-
-            // Create a reference under which you want to list
             var imagesRef = db.collection('images');
-            document.addEventListener("DOMContentLoaded", function (event) {
-
-                var customElementRegistry = window.customElements;
-                switch (window.location.pathname) {
-                    case '/admin':
-                        // signout
-                        document.getElementById('admin').classList.remove('hidden')
-                        document.getElementById('sign-out').addEventListener('click', function () {
-                            firebase.auth().signOut().then(() => {
-                                window.location.pathname = '/login'
-                            });
-                        });
-                        document.getElementById('file').addEventListener('change', function (event) {
-                            let localFile = event.target.files[0];
-                            if (!localFile.name) {
-                                console.log('That\'s not a file', localFile)
-                                return;
-                            }
-                            let imgRef = storageRef.child(localFile.name);
-                            console.log('change')
-                            imgRef.put(localFile).then((e) => {
-                                console.log('localFile', typeof e, e)
-                                document.getElementById('upload-file').innerText = 'Querying model...';
-
-                                imagesRef
-                                    .where("name", "==", localFile.name)
-                                    .limit(1)
-                                    .onSnapshot(function (querySnapshot) {
-                                        querySnapshot.forEach(function (doc) {
-                                            console.log('snapshot', doc)
-                                            if (doc.exists) {
-                                                let cloudData = doc.data();
-                                                if (cloudData.predictionErr) {
-                                                    document.getElementById('upload-status').innerText = `${cloudData.predictionErr} :(`;
-                                                    document.getElementById('upload-data').innerText = JSON.stringify(JSON.parse(cloudData.annotations || "[]"), null, 2);
-                                                } else {
-                                                    document.getElementById('upload-status').innerText = JSON.stringify(cloudData, null, 2);
-                                                    document.getElementById('upload-data').innerText = JSON.stringify(JSON.parse(cloudData.annotations || "[]"), null, 2);
-                                                }
-                                            }
-                                        }, function (error) {
-                                            console.log('error', error)
-                                        });
-                                    });
-                            });
-                        })
-                        break
-                    case '/signin':
-                        ui.start('#firebaseui-auth-container', uiConfig);
-                        break;
-                    case '/login':
-                        document.getElementById('admin').classList.remove('hidden')
-                        // Initialize the FirebaseUI Widget using Firebase.
-                        // The start method will wait until the DOM is loaded.
-                        ui.start('#firebaseui-auth-container', uiConfig);
-                        break;
-                    case '/logout':
-                        document.getElementById('admin').classList.add('hidden')
-                        // Initialize the FirebaseUI Widget using Firebase.
-                        // The start method will wait until the DOM is loaded.
-                        ui.start('#firebaseui-auth-container', uiConfig);
-                        break;
-                    default:
-                        document.getElementById('admin').classList.add('hidden')
-                        break;
-                }
-            });
         </script>
 </body>
 
